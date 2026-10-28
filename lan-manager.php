@@ -1,4 +1,5 @@
 <?php
+//OLD
 set_include_path('/opt/epic/include');
 
 $debuglevel = 0; // Level of debug, 0 is nothing, 9 is everything
@@ -6,7 +7,6 @@ $webenabled = 1; // All webpages have this set to 1, background processes set to
 $keepsession = 1;
 $usedbprod = 1;
 $bypassperm = 0;
-
 ob_start(); // Start output buffering
 
 include_once 'begin.php'; // Core EPIC initialization
@@ -36,11 +36,10 @@ $snowAuth = $snow->authenticate($config['snow.host'], $config['snow.user'], $con
 $snmp = new My\SNMP($debug, array('community.ro' => $config['network.snmp.ro']));
 $ssh = new SSH();
 
-$permissionList = [];
 foreach ($userinfo['privilege'] as $key => $value) {
    if (preg_match('/lan.manager/', $key)) {
       $split = explode('.', $key);
-      if (!empty($split[2]))
+      if ($split[2])
          $permissionList[] = $split[2];
    }
 }
@@ -68,9 +67,8 @@ foreach ($adGroups as $adGroup) {
    }
 }
 
-// This is to  support non-SD&O Local IT people who need access to only certain locations.
+// This is to  support non-SD&O Local IT people who need access to only certain locations. 
 // In case a new location is needed it just needs to be added to the restrictedLocations array
-$restrictedLocations = array();
 if (preg_match('/limited/i', $permission)) {
    $restrictedLocations = array('L01927', 'L01944');
 }
@@ -259,10 +257,9 @@ if (preg_match("/fulladmin/i", $permission) || $userinfo['privilege']['everythin
    $adGroups['CN=Managed LAN Service Local IT,OU=AAA_ISE,OU=ISE,OU=Groups,OU=Forest Administration,DC=emrsn,DC=org'] = 'Managed LAN Service Local IT';
 }
 
-// Establish connection to ise devices
+// Establish connection to ise devices 
 $query = "select * from landevmgmt_admin where enabled = 1";
 $isedevices = $db->query($query);
-$isedevs = [];
 
 foreach ($isedevices as $isedevice) {
    $isedevs[$isedevice['platform']][] = array('ip' => $isedevice['ip'], 'name' => $isedevice['name']);
@@ -302,10 +299,10 @@ $query = 'SELECT
 
 $locations = $db->query($query);
 
-$selectLocation = ['Select Location'];
+$selectLocation[] = 'Select Location';
 
 foreach ($locations as $location) {
-   if (preg_match('/limited|env/i', $permission) && !preg_grep('/' . substr($location['site'] ?? '', 2) . '/i', $restrictedLocations)) {
+   if (preg_match('/limited|env/i', $permission) && !preg_grep('/' . substr($location['site'], 2) . '/i', $restrictedLocations)) {
       continue;
    }
    $selectLocation[$location['site']] = $location['site'];
@@ -339,13 +336,11 @@ $query = 'SELECT
 
 $switches = $db->query($query);
 
-$selectSwitch = ['Select Switch'];
-$unsetIds = [];
-$allowedSwitches = [];
+$selectSwitch[] = 'Select Switch';
 
 foreach ($switches as $id => $switch) {
    // Restrict the locations for this type of permission
-   if (preg_match('/limited|env/i', $permission) && !preg_grep('/' . substr($switch['site'] ?? '', 2) . '/i', $restrictedLocations)) {
+   if (preg_match('/limited|env/i', $permission) && !preg_grep('/' . substr($switch['site'], 2) . '/i', $restrictedLocations)) {
       continue;
    }
 
@@ -414,7 +409,7 @@ $ad_group_alert_emails = [
 $page_url_str = $pageinfo["self"];
 $htmx_page_url_str = $page_url_str . "?htmx=1";
 
-if (empty($pageinfo["name"])) {
+if (!$pageinfo["name"]) {
    $tool_name_str = "lan.manager";
 } else {
    $tool_name_str = "lan.manager";
@@ -423,8 +418,6 @@ if (empty($pageinfo["name"])) {
 $make_device_favorite_base_hyperlink_str = "/lan-manager.php?tab=Favorites";
 $switch_tab_base_hyperlink_str = "/lan-manager.php?tab=Switch&searchSwitch=%s";
 $location_tab_base_hyperlink_str = "/lan-manager.php?tab=Site&searchSite=%s";
-
-$searchMac = substr(preg_replace('~(..)(?!$)\.?~', '\1:', strtoupper($input->get('searchMac', 'alphanumeric'))), 0, 17);
 
 $global = array(
    "htmx_page_url_str" => $htmx_page_url_str,
@@ -466,7 +459,7 @@ $global = array(
    'currentIfConfig' => json_decode(base64_decode($input->get('currentIfConfig', 'all')), true),
    'modal' => $input->get('modal', 'all'),
    'endpoint' => $input->get('endpoint', 'all'),
-   'searchMac' => $searchMac,
+   'searchMac' => substr(preg_replace('~(..)(?!$)\.?~', '\1:', strtoupper($input->get('searchMac', 'alphanumeric'))), 0, 17),
    'authGroups' => $authGroups,
    'authDetails' => $authDetails,
    'ise' => $ise,
@@ -484,24 +477,23 @@ $global = array(
    'allowedSwitches' => $allowedSwitches
 );
 
-if (!empty($_GET["htmx"])) {
-   ob_end_clean();
+if ($_GET["htmx"]) {
+   ob_end_clean(); // Discards the previous buffer contents and displays only the current output from call_user_func
 
-   $func_name_str = $_POST["func_name"] ?? '';
+   $func_name_str = $_POST["func_name"];
 
    call_user_func($func_name_str);
 
    include_once "end.php"; // Core graceful termination
    exit;
 } else {
-   ob_end_flush();
+   ob_end_flush(); // Discards the previous buffer contents and displays only the current output from call_user_func
 }
 
 print $html->divbox('toolinfo', $toolinfo);
 
 // We need an independent form to manage endpoints 
 print $html->startform();
-
 print $html->input_text('searchMac', $searchMac, 17, 20, array('placeholder' => 'MAC Address'));
 print $html->submit('submit', 'Search MAC', array('color' => 'gray'));
 print $html->hidden_text('tab', 'Site');
@@ -521,13 +513,6 @@ include_once 'end.php'; // Core graceful termination
 <?php
 // Supporting functions here 
 //====================================================================
-function exitEarly()
-{
-   include_once 'footer.php'; // EPIC standard footer framework
-   include_once 'end.php'; // Core graceful termination
-   exit;
-}
-
 function displayTabs()
 {
    global $global;
@@ -563,7 +548,7 @@ function displayTabs()
       print "<br>";
 
       if ($active) {
-         if ($submit && ($info['function'][$submit] ?? null))
+         if ($submit && $info['function'][$submit])
             call_user_func($info['function'][$submit]);
       }
 
@@ -590,8 +575,8 @@ function show_favorites_void()
    $make_device_favorite_base_hyperlink_str = $global["make_device_favorite_base_hyperlink_str"];
    $location_tab_base_hyperlink_str = $global["location_tab_base_hyperlink_str"];
 
-   $action_str = $_GET["action"] ?? '';
-   $level_str = $_GET["level"] ?? '';
+   $action_str = $_GET["action"];
+   $level_str = $_GET["level"];
 
    $status_bool = null;
    $status_str = "";
@@ -610,13 +595,13 @@ function show_favorites_void()
       $device_section_active_bool = true;
       $location_section_active_bool = false;
 
-      $hostname_str = trim($_GET["hostname"] ?? '');
+      $hostname_str = trim($_GET["hostname"]);
       $lower_hostname_str = strtolower($hostname_str);
 
       $lower_hostname_arr = [];
 
       foreach ($db_switch_arr as $value_arr) {
-         $local_lower_hostname_str = strtolower($value_arr["hostname"] ?? '');
+         $local_lower_hostname_str = strtolower($value_arr["hostname"]);
          $lower_hostname_arr[$local_lower_hostname_str] = $local_lower_hostname_str;
       }
 
@@ -650,7 +635,7 @@ function show_favorites_void()
       $device_section_active_bool = false;
       $location_section_active_bool = true;
 
-      $site_code_str = trim($_GET["site_code"] ?? '');
+      $site_code_str = trim($_GET["site_code"]);
       $lower_site_code_str = strtolower($site_code_str);
       $upper_site_code_str = strtoupper($site_code_str);
 
@@ -760,7 +745,7 @@ function show_favorites_void()
          ];
 
          foreach ($db_switch_arr as $value_arr) {
-            $local_lower_hostname_str = strtolower($value_arr["hostname"] ?? '');
+            $local_lower_hostname_str = strtolower($value_arr["hostname"]);
 
             if (!in_array($local_lower_hostname_str, $favorite_device_arr)) {
                continue;
@@ -987,7 +972,7 @@ function macLookup()
    $site_code_arr = array_keys($location_arr);
 
    $ise_dev_arr = $global["isedevs"];
-   $endpoint_str = trim(strtolower($global["searchMac"] ?? ''));
+   $endpoint_str = trim(strtolower($global["searchMac"]));
 
    $endpoint_in_ise_bool = false;
    $endpoint_is_authorized_bool = false;
@@ -1017,19 +1002,19 @@ function macLookup()
          $switch_hostname_str = $value_arr["switch_name"];
          $switch_ip_str = $value_arr["switch_ip"];
 
-         if (preg_match("/failed/i", $value_arr['authentication'] ?? '') && !preg_match("/permanent|temp/", $value_arr["authorization"] ?? '')) {
+         if (preg_match("/failed/i", $value_arr['authentication']) && !preg_match("/permanent|temp/", $value_arr["authorization"])) {
             $front_end_section_str = "Categorize";
          }
 
          if (
-            preg_match("/failed/i", $value_arr['authentication'] ?? '') &&
-            preg_match("/permanent|temp|remediate/", $value_arr["authorization"] ?? '') &&
+            preg_match("/failed/i", $value_arr['authentication']) &&
+            preg_match("/permanent|temp|remediate/", $value_arr["authorization"]) &&
             strtotime($value_arr["last_seen"]) > strtotime($value_arr["updated"])
          ) {
             $front_end_section_str = "Remediate";
          }
 
-         if (preg_match("/permanent|temp/i", $value_arr["authorization"] ?? '')) {
+         if (preg_match("/permanent|temp/i", $value_arr["authorization"])) {
             $front_end_section_str = "LifeCycle";
          }
 
@@ -1062,20 +1047,16 @@ function macLookup()
       foreach ($ise_dev_arr["radius"] as $ise_dev) {
          $endpoint_details_arr[$ise_dev["name"]] = $ise->getEndpointByName($ise_dev["name"], $endpoint_str);
 
-         if (!is_array($endpoint_details_arr[$ise_dev["name"]])) {
-            continue;
-         }
-
-         if ($endpoint_details_arr[$ise_dev["name"]]["ERSEndPoint"]["name"] ?? null) {
+         if ($endpoint_details_arr[$ise_dev["name"]]["ERSEndPoint"]["name"]) {
             $endpoint_in_ise_bool = true;
          }
 
-         $group_id_str = $endpoint_details_arr[$ise_dev["name"]]["ERSEndPoint"]["groupId"] ?? null;
+         $group_id_str = $endpoint_details_arr[$ise_dev["name"]]["ERSEndPoint"]["groupId"];
 
          if ($group_id_str) {
             $endpoint_group_arr = $ise->getEndpointIdentityGroup($ise_dev["name"], $group_id_str);
 
-            if (preg_match('/Wired_Whitelist_Permanent|Wired_Whitelist_Temporary/i', $endpoint_group_arr["EndPointGroup"]["name"] ?? '')) {
+            if (preg_match('/Wired_Whitelist_Permanent|Wired_Whitelist_Temporary/i', $endpoint_group_arr["EndPointGroup"]["name"])) {
                $endpoint_is_authorized_bool = true;
             }
          }
@@ -1086,20 +1067,16 @@ function macLookup()
       foreach ($ise_dev_arr["radius.china"] as $ise_dev) {
          $endpoint_details_arr[$ise_dev["name"]] = $ise->getEndpointByName($ise_dev["name"], $endpoint_str);
 
-         if (!is_array($endpoint_details_arr[$ise_dev["name"]])) {
-            continue;
-         }
-
-         if ($endpoint_details_arr[$ise_dev["name"]]["ERSEndPoint"]["name"] ?? null) {
+         if ($endpoint_details_arr[$ise_dev["name"]]["ERSEndPoint"]["name"]) {
             $endpoint_in_ise_bool = true;
          }
 
-         $group_id_str = $endpoint_details_arr[$ise_dev["name"]]["ERSEndPoint"]["groupId"] ?? null;
+         $group_id_str = $endpoint_details_arr[$ise_dev["name"]]["ERSEndPoint"]["groupId"];
 
          if ($group_id_str) {
             $endpoint_group_arr = $ise->getEndpointIdentityGroup($ise_dev["name"], $group_id_str);
 
-            if (preg_match('/Wired_Whitelist_Permanent|Wired_Whitelist_Temporary/i', $endpoint_group_arr["EndPointGroup"]["name"] ?? '')) {
+            if (preg_match('/Wired_Whitelist_Permanent|Wired_Whitelist_Temporary/i', $endpoint_group_arr["EndPointGroup"]["name"])) {
                $endpoint_is_authorized_bool = true;
             }
          }
@@ -1185,11 +1162,10 @@ function sectionSecurityViolation()
 
    $sql_req = "SELECT name, ipaddress, security_violations, details FROM lan_switch WHERE name LIKE '%$location_code%' AND service LIKE '%Managed%' AND enabled = 1";
    $sql_res = $db->query($sql_req);
-   $endpoints = [];
 
    foreach ($sql_res as $sw_name => $props) {
-      $details = json_decode($props['details'], true) ?? [];
-      $sec_vio = json_decode($props['security_violations'], true) ?? [];
+      $details = json_decode($props['details'], true);
+      $sec_vio = json_decode($props['security_violations'], true);
 
       foreach ($sec_vio as $if => $val) {
          foreach ($details['interfaces'] as $key => $value) {
@@ -1244,8 +1220,8 @@ function count_security_violations($location_code)
    $sec_vios = 0;
 
    foreach ($sql_res as $sw_name => $props) {
-      $details = json_decode($props['details'], true) ?? [];
-      $sec_vio = json_decode($props['security_violations'], true) ?? [];
+      $details = json_decode($props['details'], true);
+      $sec_vio = json_decode($props['security_violations'], true);
 
       foreach ($sec_vio as $if => $val) {
          foreach ($details['interfaces'] as $key => $value) {
@@ -1309,9 +1285,8 @@ function showSwitch()
       $sql_res = $db->query($sql_req);
 
 
-      $sec_vio = [];
       foreach ($sql_res as $index => $value) {
-         $sec_vio = json_decode($value['security_violations'], true) ?? [];
+         $sec_vio = json_decode($value['security_violations'], true);
       }
 
       print "<br>";
@@ -1336,7 +1311,7 @@ function showSwitch()
          print $html->error_message($message, 'ERROR');
          $func->loadfinish('showSwitch');
       } else {
-         if (!empty($_SESSION['pagecache'][$searchSwitch]) && !preg_match('/Configure|Add Port Channel|Add VLAN|Copy Port Config/i', $submit) && !$connect) {
+         if ($_SESSION['pagecache'][$searchSwitch] && !preg_match('/Configure|Add Port Channel|Add VLAN|Copy Port Config/i', $submit) && !$connect) {
             $interfaces = $_SESSION['pagecache'][$searchSwitch]['interfaces'];
             $vlans = $_SESSION['pagecache'][$searchSwitch]['vlans'];
          } else {
@@ -1346,90 +1321,85 @@ function showSwitch()
             $_SESSION['pagecache'][$searchSwitch]['vlans'] = $vlans;
          }
 
-         $interface_info = [];
          foreach ($interfaces as $id => $info) {
-            $ifdescr = $info['ifdescr'] ?? '';
-            if (!preg_match('/Vlan|Null|VLAN|Stack/', $ifdescr)) {
+            if (!preg_match('/Vlan|Null|VLAN|Stack/', $info['ifdescr'])) {
 
-               $ifcdpid = $info['ifcdpid'] ?? null;
-               $ifcdpdevice = $info['ifcdpdevice'] ?? null;
-               $ifmode = $info['ifmode'] ?? null;
-               $iferrdisabled = $info['iferrdisabled'] ?? null;
-               $ifvlan = $info['ifvlan'] ?? null;
-               $iftrunkvlan = $info['iftrunkvlan'] ?? null;
-               $ifvoicevlan = $info['ifvoicevlan'] ?? null;
-               $ifoperstatus = $info['ifoperstatus'] ?? null;
-               $ifadminstatus = $info['ifadminstatus'] ?? null;
-               $ifalias = $info['ifalias'] ?? '';
-
-               if ($ifcdpid && !preg_match('/[[:print:]]/', $ifcdpid)) {
-                  $ifcdpid = null;
+               if (!preg_match('/[[:print:]]/', $info['ifcdpid'])) {
+                  $info['ifcdpid'] = null;
                }
 
                $cdp_neighbor = "";
 
-               if ($ifcdpid && $ifcdpdevice) {
-                  $cdp_neighbor = $ifcdpid . "<br>(" . $ifcdpdevice . ")";
+               if ($info['ifcdpid'] && $info['ifcdpdevice']) {
+                  $cdp_neighbor = $info['ifcdpid'] . "<br>(" . $info['ifcdpdevice'] . ")";
                }
 
-               if (!$ifcdpid && $ifcdpdevice) {
-                  $cdp_neighbor = "Unkown ID<br>(" . $ifcdpdevice . ")";
+               if (!$info['ifcdpid'] && $info['ifcdpdevice']) {
+                  $cdp_neighbor = "Unkown ID<br>(" . $info['ifcdpdevice'] . ")";
                }
 
-               $interface_name = abbreviate($ifdescr);
+               if (!$info['ifcdpid'] && !$info['ifcdpdevice']) {
+                  $cdp_neighbor = "";
+               }
+
+               $interface_name = abbreviate($info['ifdescr']);
 
                // We will allow config of trunk ports that are detected as Flexconnnect
                $allowedModes = [1, 3, 4, 5];
-               $isFlexconnect = false;
 
-               if (in_array($ifmode, $allowedModes)) {
+               if (in_array($info['ifmode'], $allowedModes)) {
                   $isFlexconnect = checkIfFlexConnect($info, $vlans);
                }
 
-               $interfaces[$id]['switchInterface'] = hash('sha256', $ifdescr . $tool_name);
+               $interfaces[$id]['switchInterface'] = hash('sha256', $info['ifdescr'] . $tool_name);
                $currentIfConfig64 = base64_encode(json_encode($interfaces[$id], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE));
 
-               $swLogKey = $searchSwitch . '/' . $ifdescr;
+               // if (
+               //    $info["ifmode"] == 2 &&
+               //    !preg_match("/FCAP/i", $info["ifalias"]) &&
+               //    !preg_match("/LMAP/i", $info["ifalias"]) &&
+               //    !preg_match("/L@CK/i", $info["ifalias"])
+               // ) 
 
                $interface_info[] = array(
                   'Interface' => "<a href='/lan-manager.php?tab=Switch&" .
-                     "searchSwitch=$searchSwitch&submit=RunInterfaceConfig&switchInterface=" . $ifdescr .
+                     "searchSwitch=$searchSwitch&submit=RunInterfaceConfig&switchInterface=" . $info['ifdescr'] .
                      "' data-toggle='tooltip' title='Click to see interface running config'>" .
-                     $ifdescr . "</a>",
-                  'Operational Status' => ($ifoperstatus == 1) ? '<a class="ui green empty circular label" data-toggle="tooltip" title="Connected"></a>' :
-                     (($iferrdisabled) ? '<a class="ui orange empty circular label" data-toggle="tooltip" title="Error Disable"></a>' :
+                     $info['ifdescr'] . "</a>",
+                  'Operational Status' => ($info['ifoperstatus'] == 1) ? '<a class="ui green empty circular label" data-toggle="tooltip" title="Connected"></a>' :
+                     (($info['iferrdisabled']) ? '<a class="ui orange empty circular label" data-toggle="tooltip" title="Error Disable"></a>' :
                         '<a class="ui red empty circular label" data-toggle="tooltip" title="Not Connected"></a>'),
-                  'Admin Status' => ($ifadminstatus == 1) ? '<a class="ui green empty circular label" data-toggle="tooltip" title="Up"></a>' :
+                  'Admin Status' => ($info['ifadminstatus'] == 1) ? '<a class="ui green empty circular label" data-toggle="tooltip" title="Up"></a>' :
                      '<a class="ui red empty circular label" data-toggle="tooltip" title="Shut Down"></a>',
-                  'Mode' => $portModes[$ifmode] ?? '',
-                  'Duplex' => ($ifoperstatus == 1) ? ($selectIfConfig['duplex'][$info['ifduplex'] ?? ''] ?? '') : '',
-                  'Speed (Mbps)' => ($ifoperstatus == 1) ? round(($info['ifspeed'] ?? 0) / 1000000) : '',
-                  'Vlan' => ($ifvlan && $ifmode == 2) ? $ifvlan :
-                     (($iftrunkvlan && $ifmode != 2) ?
-                        implode(', ', $iftrunkvlan) : ''),
-                  'Voice Vlan' => ($ifvoicevlan == '4096') ? '' : ($ifvoicevlan ?? ''),
-                  'Description' => $ifalias,
-                  'Configure' => (($ifmode == 2 || $isFlexconnect) &&
-                     (preg_match('/basic|full/i', $permission) && !preg_match('/port-channel/i', $ifdescr) &&
-                        !preg_match('/SVSL|SVSS|L@CK|PCME|port-channel/i', $ifalias))) ?
+                  'Mode' => $portModes[$info['ifmode']],
+                  'Duplex' => ($info['ifoperstatus'] == 1) ? $selectIfConfig['duplex'][$info['ifduplex']] : '',
+                  'Speed (Mbps)' => ($info['ifoperstatus'] == 1) ? round($info['ifspeed'] / 1000000) : '',
+                  'Vlan' => ($info['ifvlan'] && $info['ifmode'] == 2) ? $info['ifvlan'] :
+                     (($info['iftrunkvlan'] && $info['ifmode'] != 2) ?
+                        implode(', ', $info['iftrunkvlan']) : ''),
+                  'Voice Vlan' => ($info['ifvoicevlan'] == '4096') ? '' : $info['ifvoicevlan'],
+                  'Description' => $info['ifalias'],
+                  'Configure' => (($info['ifmode'] == 2 || $isFlexconnect) &&
+                     (preg_match('/basic|full/i', $permission) && !preg_match('/port-channel/i', $info['ifdescr']) &&
+                        !preg_match('/SVSL|SVSS|L@CK|PCME|port-channel/i', $info['ifalias']))) ?
                      "<a href='/lan-manager.php?tab=Switch&" .
-                     "searchSwitch=$searchSwitch&modal=ConfigureInterface&switchInterface=" . $ifdescr .
+                     "searchSwitch=$searchSwitch&modal=ConfigureInterface&switchInterface=" . $info['ifdescr'] .
                      "&currentIfConfig=$currentIfConfig64" .
-                     "'>Configure " . $ifdescr . "</a>" :
-                     ((preg_match('/port-channel/i', $ifdescr) && preg_match('/full/i', $permission)) ?
+                     "'>Configure " . $info['ifdescr'] . "</a>" :
+                     ((preg_match('/port-channel/i', $info['ifdescr']) && preg_match('/full/i', $permission)) ?
                         "<a href='/lan-manager.php?tab=Switch&" .
-                        "searchSwitch=$searchSwitch&modal=ConfigurePortChannel&switchInterface=" . $ifdescr .
+                        "searchSwitch=$searchSwitch&modal=ConfigurePortChannel&switchInterface=" . $info['ifdescr'] .
                         "&currentIfConfig=$currentIfConfig64" .
-                        "'>Configure " . $ifdescr . "</a>" :
-                        ((preg_match('/env/i', $permission) && $ifmode == 2 && !preg_match('/LMAP|FCAP/i', $ifalias)) ?
+                        "'>Configure " . $info['ifdescr'] . "</a>" :
+                        ((preg_match('/env/i', $permission) && $info['ifmode'] == 2 && !preg_match('/LMAP|FCAP/i', $info['ifalias'])) ?
                            "<a href='/lan-manager.php?tab=Switch&" .
-                           "searchSwitch=$searchSwitch&modal=ConfigureInterface&switchInterface=" . $ifdescr .
+                           "searchSwitch=$searchSwitch&modal=ConfigureInterface&switchInterface=" . $info['ifdescr'] .
                            "&currentIfConfig=$currentIfConfig64" .
-                           "'>Configure " . $ifdescr . "</a>" : "")),
+                           "'>Configure " . $info['ifdescr'] . "</a>" : "")),
                   'CDP Neighbor' => $cdp_neighbor,
-                  'Last configured' => ($swLogs && isset($swLogs[$swLogKey])) ?
-                     ($swLogs[$swLogKey]['updated_by'] ?? '') . '<br>' . ($swLogs[$swLogKey]['updated'] ?? '') : 'No info',
-                  'Security Violation' => $sec_vio[$ifdescr]['last_seen'] ?? ''
+                  'Last configured' => $swLogs ? $swLogs[$searchSwitch . '/' . $info['ifdescr']]['updated_by'] . '<br>' .
+                     $swLogs[$searchSwitch . '/' . $info['ifdescr']]['updated'] : 'No info',
+                  'Security Violation' => $sec_vio[$info['ifdescr']]['last_seen']
                );
             }
          }
@@ -1763,10 +1733,10 @@ function render_generated_copy_port_config_void()
    $html = $global["html"];
    $config = $global["config"];
 
-   $switch_hostname_str = $_POST["switch_hostname"] ?? '';
+   $switch_hostname_str = $_POST["switch_hostname"];
    $switch_ip_address_str = "";
-   $src_interface_str = $_POST["select_src_interface"] ?? '';
-   $dest_interface_str = $_POST["select_dest_interface"] ?? '';
+   $src_interface_str = $_POST["select_src_interface"];
+   $dest_interface_str = $_POST["select_dest_interface"];
 
    $db_req_str = "SELECT name, ipaddress FROM lan_switch WHERE enabled = 1 AND deleted = 0";
    $db_res_arr = $db->query($db_req_str);
@@ -1869,7 +1839,7 @@ function apply_copy_port_config_void()
 {
    global $global;
 
-   if (empty($_GET["htmx"])) {
+   if (!$_GET["htmx"]) {
       return;
    }
 
@@ -1878,13 +1848,13 @@ function apply_copy_port_config_void()
    $html = $global["html"];
    $config = $global["config"];
 
-   $src_interface_str = $_POST["src_interface"] ?? '';
-   $dest_interface_str = $_POST["dest_interface"] ?? '';
+   $src_interface_str = $_POST["src_interface"];
+   $dest_interface_str = $_POST["dest_interface"];
 
    $switch_hostname_str = $global["searchSwitch"];
    $switch_ip_address_str = "";
 
-   $copy_port_config_arr = json_decode($_POST["config"] ?? '', true);
+   $copy_port_config_arr = json_decode($_POST["config"], true);
    $copy_port_config_str = implode("\n", $copy_port_config_arr);
 
    array_pop($copy_port_config_arr);
@@ -1996,7 +1966,6 @@ function showAddPortChannelModal($interfaces, $vlans)
    $db = $global['db'];
    $config = $global['config'];
    $tab = $global['tab'];
-   $siteSection = $global['siteSection'];
 
    $searchSwitch = $global['searchSwitch'];
 
@@ -2026,8 +1995,6 @@ function showAddPortChannelModal($interfaces, $vlans)
    }
 
    $portChannels = json_encode($portChannels);
-
-   $intID = '';
 
    print $html->startmodal("Add Port Channel for $searchSwitch", true);
    print $html->startmodalcontent();
@@ -2253,7 +2220,6 @@ function showAddVLANsModal()
    $config = $global['config'];
 
    $searchSwitch = $global['searchSwitch'];
-   $siteSection = $global['siteSection'] ?? '';
 
    $vlans = json_encode(collectVlanData($searchSwitch));
 
@@ -2520,8 +2486,6 @@ function vlanLayer3Switch()
    $func = $global['func'];
 
    $index = 0;
-   $count = 1;
-   $vlanID = '';
 
    $guide = array(
       "Vlan ID must be between 4 and 919",
@@ -2594,8 +2558,6 @@ function vlanLayer2Switch()
    $searchSwitch = $global['searchSwitch'];
 
    $index = 0;
-   $count = 0;
-   $vlanID = '';
 
    $guide = array(
       "VLAN ID must be between 4 and 919",
@@ -2635,9 +2597,7 @@ function showUpdateBannerModal()
    $tab = $global['tab'];
    $searchSwitch = $global['searchSwitch'];
 
-   $siteSection = $global['siteSection'];
    $selectBanners = [];
-   $banner = '';
 
    print $html->startmodal("Update Banner for $searchSwitch", true);
    print $html->startmodalcontent();
@@ -2700,7 +2660,7 @@ function applyBanner()
       }
 
       if (!preg_match("/S[0-9]+,[' ']+L[0-9]+,[' '].+" . $chosenBannerCode . "/", $newSysLocation)) {
-         $errors[] = "Banner update failed for switch $searchSwitch - $currentIP due to invalid SysLocation $newSysLocation";
+         $errors[] = "Banner update failed for switch $searchSwitch - $currentIp due to invalid SysLocation $newSysLocation";
       } else {
          $result = connAndExec($currentIP, $chosenBannerCode, $currentBannerCode, $currentSysLocation, $newSysLocation, $searchSwitch);
          if ($result['success']) {
@@ -2731,14 +2691,14 @@ function checkIfFlexConnect($intinfo, $vlans)
       // If we find any vlan that does not contain either of the key words or vlan id not in the (20-29) range 
       // then the port is probably a normal trunk
       if (
-         !(preg_match('/emrdata|wifi|wireless|mgmt|management/i', $vlans[$allowedVlan] ?? '') ||
+         !(preg_match('/emrdata|wifi|wireless|mgmt|management/i', $vlans[$allowedVlan]) ||
             ($allowedVlan > 20 && $allowedVlan < 29))
       ) {
          $return = 0;
       }
    }
 
-   if (!preg_match('/FCAP/', $intinfo['ifalias'] ?? '')) {
+   if (!preg_match('/FCAP/', $intinfo['ifalias'])) {
       $return = 0;
    }
 
@@ -2782,12 +2742,12 @@ function showUpdateServiceNowModal()
 
    print $html->textarea(
       'u_local_poc',
-      preg_replace('/,/', '; ', $snowInfo['u_local_poc']['display_value'] ?? ''),
+      preg_replace('/,/', '; ', $snowInfo['u_local_poc']['display_value']),
       100,
       5,
       array('placeholder' => 'Local POC')
    );
-   print $html->hidden_text('u_local_poc_snow', json_encode($snowInfo['u_local_poc'] ?? ''));
+   print $html->hidden_text('u_local_poc_snow', json_encode($snowInfo['u_local_poc']));
    print "<br><font color='blue'>As you type, an automatic search in AD will be performed providing you a " .
       "list of available AD accounts based on your search. " .
       "<br>Only valid AD users are accepted as POC</font>";
@@ -2870,9 +2830,9 @@ function gatherSnowData()
    $switchDetails = $db->query($query);
 
    $return['u_ip_address'] = $switchDetails[$searchSwitch]['ipaddress'];
-   $swname = explode('.', $switchDetails[$searchSwitch]['name'] ?? '');
+   $swname = explode('.', $switchDetails[$searchSwitch]['name']);
 
-   $return['u_name'] = strtolower($swname[0] ?? '');
+   $return['u_name'] = strtolower($swname[0]);
 
    if ($switchDetails[$searchSwitch]['sn']) {
       $return['u_serial_number'] = $switchDetails[$searchSwitch]['sn'];
@@ -2884,11 +2844,10 @@ function gatherSnowData()
    // For the already existing poc in SNOW we need to keep the sys_ids
    $existingPoc = json_decode($input->get('u_local_poc_snow', 'all'), true);
 
-   $snowPoc['id'] = explode(',', $existingPoc['value'] ?? '');
-   $snowPoc['name'] = explode(', ', $existingPoc['display_value'] ?? '');
+   $snowPoc['id'] = explode(',', $existingPoc['value']);
+   $snowPoc['name'] = explode(', ', $existingPoc['display_value']);
 
    $items = explode(';', $inputValue);
-   $poc = [];
 
    foreach ($items as $id => $item) {
       $item = trim($item);
@@ -2960,7 +2919,6 @@ function showConfigureInterfaceModal($interfaces, $vlans)
    $snmp = $global['snmp'];
    $oids = $global['oids'];
    $tool_name = $global['tool_name'];
-   $error = [];
    $func = $global["func"];
 
    $switches = $global['switches'];
@@ -2973,7 +2931,7 @@ function showConfigureInterfaceModal($interfaces, $vlans)
    $currentIfConfig = $global['currentIfConfig'];
 
    // We will allow changing port mode from Access to AP only if port is up&access&cdp neigh is an AP
-   if ($currentIfConfig['ifoperstatus'] == '1' && preg_match('/cisco air|C9120AX|C9130AX|CW9163|CW9166/i', $currentIfConfig['ifcdpdevice'] ?? '')) {
+   if ($currentIfConfig['ifoperstatus'] == '1' && preg_match('/cisco air|C9120AX|C9130AX|CW9163|CW9166/i', $currentIfConfig['ifcdpdevice'])) {
       $portModes = array(
          '2' => "Access Port",
          '22' => "Access Port for Local Mode AP",
@@ -3024,7 +2982,7 @@ function showConfigureInterfaceModal($interfaces, $vlans)
       print "<br>";
 
       // We need to detect if the port is a local mode ap or normal access port (ifmode will be 2 for both)
-      $detectPortMode = ($currentIfConfig['ifmode'] == 2 && preg_match('/mgmt|management/i', $vlans[$currentIfConfig['ifvlan']] ?? '') && preg_match('/LMAP/', $currentIfConfig['ifalias'] ?? ''))
+      $detectPortMode = ($currentIfConfig['ifmode'] == 2 && preg_match('/mgmt|management/i', $vlans[$currentIfConfig['ifvlan']]) && preg_match('/LMAP/', $currentIfConfig['ifalias']))
          ? 22 : $currentIfConfig['ifmode'];
 
       // Removing Vlan 2 and vlan 3 from the VLANs available for configuration of an access port
@@ -3110,7 +3068,7 @@ function showConfigureInterfaceModal($interfaces, $vlans)
       print "<br>";
       print $html->input_text(
          'ifalias',
-         htmlspecialchars($currentIfConfig['ifalias'] ?? '', ENT_QUOTES),
+         htmlspecialchars($currentIfConfig['ifalias'], ENT_QUOTES),
          50,
          40,
          array('placeholder' => 'Description')
@@ -3391,7 +3349,7 @@ function showRunCLICommandModal($interfaces, $vlans)
       unset($cliCommands['show startup-config']);
       unset($cliCommands['show tech-support']);
       unset($cliCommands['show aaa servers']);
-      unset($cliCommands['test cable-diagnostics tdr interface filter']);
+      unset($cliCommand['test cable-diagnostics tdr interface filter']);
    }
 
    print $html->startmodal("Run CLI Commands on $searchSwitch", true);
@@ -3406,7 +3364,7 @@ function showRunCLICommandModal($interfaces, $vlans)
 
    print "<div class='column'>";
    print $html->hidden_text('modal', 'runCLICommands');
-   print $html->select('cliCommand', $cliCommands, $cliCommand['cliCommand'] ?? []);
+   print $html->select('cliCommand', $cliCommands, $cliCommand['cliCommand']);
    print $html->hidden_text('devip', $devip);
    print "</div>";
 
@@ -3469,8 +3427,6 @@ function configureInterface()
 
    $switches = $global['switches'];
    $searchSwitch = $global['searchSwitch'];
-   $warning = [];
-   $errors = [];
    $switchInterface = $global['switchInterface'];
    $currentIfConfig = $global['currentIfConfig'];
    $selectIfConfig = $global['selectIfConfig'];
@@ -3489,8 +3445,8 @@ function configureInterface()
       'vlan' => ($currentIfConfig['ifvlan'] != $input->get('ifvlan', 'all')) ? $input->get('ifvlan', 'all') : '',
       'wirelessvlan' => ($currentIfConfig['ifvlan'] != $input->get('ifwirelessvlan', 'all')) ?
          $input->get('ifwirelessvlan', 'all') : '',
-      'trunkvlans' => (array_diff((array) ($currentIfConfig['iftrunkvlan'] ?? []), (array) ($input->get('trunkvlans', 'all') ?? [])) ||
-         array_diff((array) ($input->get('trunkvlans', 'all') ?? []), (array) ($currentIfConfig['iftrunkvlan'] ?? []))) ?
+      'trunkvlans' => (array_diff($currentIfConfig['iftrunkvlan'], $input->get('trunkvlans', 'all')) ||
+         array_diff($input->get('trunkvlans', 'all'), $currentIfConfig['iftrunkvlan'])) ?
          $input->get('trunkvlans', 'all') : array(),
       'voiceVlan' => ($currentIfConfig['ifvoicevlan'] != $input->get('ifvoicevlan', 'all')) ?
          $input->get('ifvoicevlan', 'all') : '',
@@ -3535,7 +3491,7 @@ function configureInterface()
          $ssh->command("configure terminal");
          $ssh->command("file prompt quiet");
 
-         if (!empty($configData['mode']) && !($configData['mode'] == 22 && $currentIfConfig['ifmode'] == 2)) {
+         if ($configData['mode'] && !($configData['mode'] == 22 && $currentIfConfig['ifmode'] == 2)) {
             // Port Mode was changed
             $ssh->command("default interface " . $switchInterface);
             // Need a flag to restart the port after the if config is ready
@@ -3554,7 +3510,7 @@ function configureInterface()
          }
 
          // If port mode changed to trunk
-         if (($configData['mode'] ?? '') == 1) {
+         if ($configData['mode'] == 1) {
             $ssh->command("switchport trunk encapsulation dot1q");
             $ssh->command("switchport mode trunk");
             if ($configData['nativevlan']) {
@@ -3597,7 +3553,7 @@ function configureInterface()
                $authCmds = getAuthCmdsV1($configData, $searchSwitch);
             }
             if ($ibns == 2) {
-               $authCmds = getAuthCmdsV2($configData, $searchSwitch);
+               $authCmds = getAuthCmdsV2($configData, $currentIfConfig, $searchSwitch);
             }
 
             foreach ($authCmds as $authCmd) {
@@ -3607,7 +3563,7 @@ function configureInterface()
          }
 
          // Port changed to access mode (exclude the change from access to access port for AP or the one changed to trunk
-         if ((($configData['mode'] ?? '') == 2 || /* ($currentIfConfig['ifmode'] == 2 && $configData['mode'] != 1) ||*/ (($configData['mode'] ?? '') == 22 && $currentIfConfig['ifmode'] != 2))) {
+         if (($configData['mode'] == 2 || /* ($currentIfConfig['ifmode'] == 2 && $configData['mode'] != 1) ||*/ ($configData['mode'] == 22 && $currentIfConfig['ifmode'] != 2))) {
             $ssh->command("switchport mode access");
             $ssh->command("spanning-tree portfast");
             $ssh->command("spanning-tree bpduguard enable");
@@ -3617,7 +3573,7 @@ function configureInterface()
                $authCmds = getAuthCmdsV1($configData, $searchSwitch);
             }
             if ($ibns == 2) {
-               $authCmds = getAuthCmdsV2($configData, $searchSwitch);
+               $authCmds = getAuthCmdsV2($configData, $currentIfConfig, $searchSwitch);
             }
 
             foreach ($authCmds as $authCmd) {
@@ -3627,29 +3583,29 @@ function configureInterface()
          }
 
          // We need to keep the old config for desc, speed, admin status as the port was reset
-         if (!empty($configData['mode'])) {
+         if ($configData['mode']) {
             $ssh->command($selectIfConfig['adminStatus'][$currentIfConfig['ifadminstatus']]);
             $ssh->command("description " . $currentIfConfig['ifalias']);
          }
 
-         if (!empty($configData['nativevlan'])) {
+         if ($configData['nativevlan']) {
             $ssh->command("switchport trunk native vlan " . $configData['nativevlan']);
             array_push($configData['trunkvlans'], $configData['nativevlan']);
          }
 
-         if (!empty($configData['trunkvlans'])) {
+         if ($configData['trunkvlans']) {
             // If the native vlan was not change we still need to keep the current one on the trunk as tagged
-            if (empty($configData['nativevlan']) && $currentIfConfig['ifnativevlan']) {
+            if (!$configData['nativevlan'] && $currentIfConfig['ifnativevlan']) {
                array_push($configData['trunkvlans'], $currentIfConfig['ifnativevlan']);
             }
             // If the port was transition to access mode skip this step 
-            if (!preg_match('/2/', $configData['mode'] ?? '')) {
+            if (!preg_match('/2/', $configData['mode'])) {
                $ssh->command("switchport trunk allowed vlan " . implode(',', $configData['trunkvlans']));
             }
          }
 
          // Configure interface description
-         if (!empty($configData['description'])) {
+         if ($configData['description']) {
             if ($configData['description'] != 'no description') {
                $ssh->command("description " . $configData['description']);
             } else {
@@ -3675,7 +3631,7 @@ function configureInterface()
          }
 
          // Configure interface VLAN for access ports
-         if (!empty($configData['wirelessvlan'])) {
+         if ($configData['wirelessvlan']) {
             $ssh->command("switchport access vlan " . $configData['wirelessvlan']);
             $ssh->command("spanning-tree portfast");
             $ssh->command("spanning-tree bpduguard enable");
@@ -3685,7 +3641,7 @@ function configureInterface()
             }
          }
          // Configure voice VLAN on the interface
-         if (!empty($configData['voiceVlan'])) {
+         if ($configData['voiceVlan']) {
             if (!preg_match('/remove/i', $configData['voiceVlan'])) {
                $ssh->command("switchport voice vlan " . $configData['voiceVlan']);
                $ssh->command("no authentication host-mode single-host");
@@ -3700,15 +3656,15 @@ function configureInterface()
          }
 
          // Configure admin status of the interface (shut/ no shut) 
-         if (!empty($configData['adminStatus'])) {
+         if ($configData['adminStatus']) {
             $ssh->command($configData['adminStatus']);
          }
 
-         if (!empty($configData['speed'])) {
+         if ($configData['speed']) {
             $ssh->command("speed " . $configData['speed']);
          }
 
-         if (!empty($configData['duplex'])) {
+         if ($configData['duplex']) {
             $ssh->command("duplex " . $configData['duplex']);
          }
 
@@ -3777,7 +3733,7 @@ function getAuthCmdsV1($configData, $searchSwitch)
 
    $return[] = 'authentication event fail action next-method';
 
-   if (empty($configData['voiceVlan'])) {
+   if (!$configData['voiceVlan']) {
       $return[] = 'authentication host-mode single-host';
    } else {
       // only for data + voice ports
@@ -3804,12 +3760,14 @@ function getAuthCmdsV1($configData, $searchSwitch)
    return $return;
 }
 
-function getAuthCmdsV2($configData, $searchSwitch)
+function getAuthCmdsV2($configData, $currentIfConfig, $searchSwitch)
 {
 
    global $global;
 
    $switches = $global['switches'];
+   $userinfo = $global['userinfo'];
+   $func = $global['func'];
 
    $switchMode = $switches[$searchSwitch]['mode'];
 
@@ -3820,7 +3778,7 @@ function getAuthCmdsV2($configData, $searchSwitch)
 
    $return[] = 'authentication event fail action next-method';
 
-   if (empty($configData['voiceVlan'])) {
+   if (!$configData['voiceVlan']) {
       $return[] = 'authentication host-mode single-host';
    } else {
       // only for data + voice ports
@@ -3838,6 +3796,8 @@ function getAuthCmdsV2($configData, $searchSwitch)
 
    // exclude the policy for management vlans 
    if ($configData['vlan'] != 2 && $configData['vlan'] != 3) {
+      // Tear down policy map on old VLAN before applying policy map on new VLAN.
+      $return[] = "no service-policy type control subscriber MANAGED_LAN_DEFAULT_DOT1X_POLICY_MAP_" . $currentIfConfig['ifvlan'];
       $return[] = "service-policy type control subscriber MANAGED_LAN_DEFAULT_DOT1X_POLICY_MAP_" . $configData['vlan'];
    }
 
@@ -3907,9 +3867,6 @@ function configurePortChannel()
    $html = $global['html'];
    $config = $global['config'];
    $func = $global['func'];
-
-   $success = [];
-   $errors = [];
 
    $switches = $global['switches'];
    $searchSwitch = $global['searchSwitch'];
@@ -4037,7 +3994,6 @@ function sectionSwitches()
       $switches = $db->query($query);
 
       $switches = array_values($switches);
-      $unsetIds = [];
 
       foreach ($switches as $id => $switch) {
          $switchPurpose = array();
@@ -4131,7 +4087,7 @@ function sectionSwitches()
          preg_match('/B[0-9].{2}/', $switch['sysLocation'], $match);
 
          $switches[$id]['sysLocation'] = $switch['sysLocation'];
-         $bannerCode = $match[0] ?? null;
+         $bannerCode = $match[0];
          $switches[$id]['banner_code'] = $bannerCode ? $bannerCode : 'Not found';
       }
 
@@ -4200,9 +4156,6 @@ function updateBannersModal()
 
    if (count(array_unique($banners)) != 1)
       $warning = "Different banners were found on selected switch(s) in $searchSite";
-   $selectBanners = [];
-   $banner = '';
-
    if (in_array('Empty Banner', $banners))
       $warning = "No banner found in sysLocation on selected switch(s) in $searchSite";
 
@@ -4509,7 +4462,7 @@ function sectionCategorize()
          $seen = "{$days_ago} days ago";
 
          $results[$id]['seen'] = $seen;
-         $results[$id]['review_status'] = ucfirst(strtolower($result['review_status'] ?? ''));
+         $results[$id]['review_status'] = ucfirst(strtolower($result['review_status']));
          $results[$id]['review_adm_account'] = $result['review_adm_account'];
 
          // Mapping the switch port from nac logs to interface desc 
@@ -4635,7 +4588,6 @@ function showReviewEndpointModal()
 
    $date = date('Y-m-d h:m', time());
    $endpoint_statuses = ['Investigating', 'Reviewed'];
-   $new_endpoint = false;
 
    $sql_req = "SELECT review_status, remark FROM lan_switch_nac WHERE endpoint ='$endpoint'";
    $sql_res = $db->query($sql_req);
@@ -4744,8 +4696,6 @@ function reviewEndpoint()
       return 0;
    }
 
-   $success = '';
-   $error = '';
    $endpoint_status = $input->get('endpoint_status_dropdown', 'alpha');
    $endpoint_remark = $input->get('endpoint_remark', 'all');
    $endpoint_timestamp = $input->get('endpoint_timestamp', 'all');
@@ -4861,7 +4811,7 @@ function showAuthorizeModal()
    $query = "SELECT endpoint,switch_name FROM lan_switch_nac WHERE endpoint LIKE '$endpoint'";
 
    $endpointDetails = $db->query($query);
-   $authLocation = substr($endpointDetails[$endpoint]['switch_name'] ?? '', 0, 8);
+   $authLocation = substr($endpointDetails[$endpoint]['switch_name'], 0, 8);
 
    print $html->startmodal("Authorize $endpoint", true);
 
@@ -4892,7 +4842,6 @@ function showAuthorizeModal()
    print "<br><br>";
    print "Description";
    print "<br><br>";
-   $authDesc = '';
    print $html->input_text('authDesc', $authDesc, 50, 50);
    print "<br><br>";
    print "IP Phone &nbsp&nbsp";
@@ -4943,9 +4892,6 @@ function authorizeEndpoint()
    $authDetails = $global['authDetails'];
    $authGroups = $global['authGroups'];
 
-   $success = array();
-   $errors = array();
-
    $func->loadstart("Loading, please wait...");
 
    if (!$authDetails['authLocation']) {
@@ -4964,7 +4910,7 @@ function authorizeEndpoint()
       $endpointDetails[$isedev['name']] = $ise->getEndpointByName($isedev['name'], $endpoint);
 
       // If endpoint exists in ise
-      if (!empty($endpointDetails[$isedev['name']]['ERSEndPoint']['name'])) {
+      if ($endpointDetails[$isedev['name']]['ERSEndPoint']['name']) {
          // Only put the mac in the group 
          $data = $endpointDetails[$isedev['name']];
          //$data['ERSEndPoint']['profileId'] = $groupId;
@@ -5030,7 +4976,7 @@ function authorizeEndpoint()
          $endpointDetails[$isedev['name']] = $ise->getEndpointByName($isedev['name'], $endpoint);
 
          // If endpoint exists in ise
-         if (!empty($endpointDetails[$isedev['name']]['ERSEndPoint']['name'])) {
+         if ($endpointDetails[$isedev['name']]['ERSEndPoint']['name']) {
             // Only put the mac in the group 
             $data = $endpointDetails[$isedev['name']];
             //$data['ERSEndPoint']['profileId'] = $groupId;
@@ -5140,7 +5086,6 @@ function sectionLifeCycle()
    $db = $global['db'];
    $html = $global['html'];
    $modal = $global['modal'];
-   $submit = $global['submit'];
    $func = $global['func'];
    $endpoint_str = $global["endpoint"];
    $allowedSwitches = $global['allowedSwitches'];
@@ -5266,42 +5211,34 @@ function showDeleteAuthorizationModal()
    foreach ($isedevs['radius'] as $isedev) {
       $endpointDetails[$isedev['name']] = $ise->getEndpointByName($isedev['name'], $endpoint);
 
-      if (!is_array($endpointDetails[$isedev['name']])) {
-         continue;
-      }
-
       // If the Endpoint exists in ISE
-      if ($endpointDetails[$isedev['name']]['ERSEndPoint'] ?? null)
+      if ($endpointDetails[$isedev['name']]['ERSEndPoint'])
          $valid++;
 
-      $groupId = $endpointDetails[$isedev['name']]['ERSEndPoint']['groupId'] ?? null;
-      $locationCode = $endpointDetails[$isedev['name']]['ERSEndPoint']['description'] ?? null;
+      $groupId = $endpointDetails[$isedev['name']]['ERSEndPoint']['groupId'];
+      $locationCode = $endpointDetails[$isedev['name']]['ERSEndPoint']['description'];
 
       if ($groupId) {
          // Check what group the endpoint belongs to
          $endpointGrp = $ise->getEndpointIdentityGroup($isedev['name'], $groupId);
-         $authGroup = $endpointGrp['EndPointGroup']['name'] ?? null;
+         $authGroup = $endpointGrp['EndPointGroup']['name'];
       }
    }
 
    foreach ($isedevs['radius.china'] as $isedev) {
       $endpointDetails[$isedev['name']] = $ise->getEndpointByName($isedev['name'], $endpoint);
 
-      if (!is_array($endpointDetails[$isedev['name']])) {
-         continue;
-      }
-
       // If the Endpoint exists in ISE CHINA
-      if ($endpointDetails[$isedev['name']]['ERSEndPoint'] ?? null)
+      if ($endpointDetails[$isedev['name']]['ERSEndPoint'])
          $valid++;
 
-      $groupId = $endpointDetails[$isedev['name']]['ERSEndPoint']['groupId'] ?? null;
-      $locationCode = $endpointDetails[$isedev['name']]['ERSEndPoint']['description'] ?? null;
+      $groupId = $endpointDetails[$isedev['name']]['ERSEndPoint']['groupId'];
+      $locationCode = $endpointDetails[$isedev['name']]['ERSEndPoint']['description'];
 
       if ($groupId) {
          // Check what group the endpoint belongs to
          $endpointGrp = $ise->getEndpointIdentityGroup($isedev['name'], $groupId);
-         $authGroup = $endpointGrp['EndPointGroup']['name'] ?? null;
+         $authGroup = $endpointGrp['EndPointGroup']['name'];
       }
    }
 
@@ -5369,9 +5306,6 @@ function deleteAuthorization()
    $isedevs = $global['isedevs'];
    $endpoint = $global['endpoint'];
 
-   $success = array();
-   $errors = array();
-
    $func->loadstart("Loading, please wait...");
 
    $sendcoa = $ise->sendCoa($isedevs['monitor'][0]['name'], $endpoint);
@@ -5379,7 +5313,7 @@ function deleteAuthorization()
    foreach ($isedevs['radius'] as $isedev) {
       $endpointDetails[$isedev['name']] = $ise->getEndpointByName($isedev['name'], $endpoint);
 
-      if (!empty($endpointDetails[$isedev['name']]['ERSEndPoint']['id'])) {
+      if ($endpointDetails[$isedev['name']]['ERSEndPoint']['id']) {
 
          $deleteEndpoint = $ise->deleteEndpoint($isedev['name'], $endpointDetails[$isedev['name']]['ERSEndPoint']['id']);
 
@@ -5395,7 +5329,7 @@ function deleteAuthorization()
    foreach ($isedevs['radius.china'] as $isedev) {
       $endpointDetails[$isedev['name']] = $ise->getEndpointByName($isedev['name'], $endpoint);
 
-      if (!empty($endpointDetails[$isedev['name']]['ERSEndPoint']['id'])) {
+      if ($endpointDetails[$isedev['name']]['ERSEndPoint']['id']) {
 
          $deleteEndpoint = $ise->deleteEndpoint($isedev['name'], $endpointDetails[$isedev['name']]['ERSEndPoint']['id']);
 
@@ -5458,10 +5392,6 @@ function deleteAuthorizationBulk()
 
    $count = $input->get('deleteBulkCount', 'numeric');
 
-   $success = array();
-   $errors = array();
-   $endpoints = array();
-
    $func->loadstart("Loading, please wait...");
 
    for ($i = 0; $i < $count; $i++) {
@@ -5475,7 +5405,7 @@ function deleteAuthorizationBulk()
 
             $endpointDetails[$isedev['name']] = $ise->getEndpointByName($isedev['name'], $endpoint);
 
-            if (!empty($endpointDetails[$isedev['name']]['ERSEndPoint']['id'])) {
+            if ($endpointDetails[$isedev['name']]['ERSEndPoint']['id']) {
                $deleteEndpoint = $ise->deleteEndpoint(
                   $isedev['name'],
                   $endpointDetails[$isedev['name']]['ERSEndPoint']['id']
@@ -5507,7 +5437,7 @@ function deleteAuthorizationBulk()
 
             $endpointDetails[$isedev['name']] = $ise->getEndpointByName($isedev['name'], $endpoint);
 
-            if (!empty($endpointDetails[$isedev['name']]['ERSEndPoint']['id'])) {
+            if ($endpointDetails[$isedev['name']]['ERSEndPoint']['id']) {
                $deleteEndpoint = $ise->deleteEndpoint(
                   $isedev['name'],
                   $endpointDetails[$isedev['name']]['ERSEndPoint']['id']
@@ -5565,7 +5495,6 @@ function sectionRemediate()
    $db = $global['db'];
    $html = $global['html'];
    $modal = $global['modal'];
-   $submit = $global['submit'];
    $func = $global['func'];
    $endpoint_str = $global["endpoint"];
    $allowedSwitches = $global['allowedSwitches'];
@@ -5664,7 +5593,6 @@ function showAllSites()
    $db = $global['db'];
    $html = $global['html'];
    $modal = $global['modal'];
-   $submit = $global['submit'];
    $locations = $global['locations'];
    $permission = $global['permission'];
    $restrictedLocations = $global['restrictedLocations'];
@@ -5706,7 +5634,7 @@ function showAllSites()
    $results = $db->query($query);
 
    foreach ($results as $site => $result) {
-      if (preg_match('/limited|env/i', $permission) && !preg_grep('/' . substr($site ?? '', 2) . '/i', $restrictedLocations)) {
+      if (preg_match('/limited|env/i', $permission) && !preg_grep('/' . substr($site, 2) . '/i', $restrictedLocations)) {
          continue;
       }
 
@@ -5722,7 +5650,7 @@ function showAllSites()
 
          $icon_str = "";
 
-         if (in_array(strtolower($result['site'] ?? ''), $favorite_location_arr)) {
+         if (in_array(strtolower($result['site']), $favorite_location_arr)) {
             $hyperlink_props_arr["action"] = "action=remove";
             $icon_str = "yellow star icon";
          } else {
@@ -5739,7 +5667,7 @@ function showAllSites()
 
       $item['region'] = $result['region'];
       $item['site'] = "<a href='/lan-manager.php?tab=Site&searchSite=" . $result['site'] . "'>" . $result['site'] . "</a>";
-      $item['location'] = (!empty($locations[$site]['location']) && !preg_match('/null/i', $locations[$site]['location'])) ?
+      $item['location'] = ($locations[$site]['location'] && !preg_match('/null/i', $locations[$site]['location'])) ?
          $locations[$site]['location'] : 'Unknown';
 
       // $sql_req       = "SELECT name FROM lan_switch WHERE name LIKE '%$location_code%' AND service LIKE '%Managed%' AND enabled = 1";
@@ -5858,8 +5786,6 @@ function showRequestLowImpactModal()
       print $html->info_message("Clicking Submit does <b>NOT</b> change site's mode right away. 
            This signifies the location wants or is ready to go to Low Impact mode", "NOTE");
 
-      $warning = [];
-
       if (count($categorize)) {
          $categorizeLink = "<a href='/lan-manager.php?tab=Site&siteSection=Categorize&" .
             "searchSite=$searchSite'>here</a>";
@@ -5971,7 +5897,6 @@ function composeMail($searchSite, $switches)
       "User " . $userinfo['username'] . " reqested transiton to low impact for site <b>$searchSite</b> switches" .
       "<br><br>" . implode('<br>', array_keys($switches));
 
-   $headers = '';
    $sendEmail = $mail->sendhtml($to, $from, $subject, $body, $headers);
 }
 
@@ -6109,7 +6034,7 @@ function renderAdUserExtraLocationAccessTable()
    $attributes = ['sAMAccountName'];
    $adSearchResult = $ldap->search($adbasedn, $filter, $attributes);
 
-   $adUser = $adSearchResult[0]['samaccountname'][0] ?? null;
+   $adUser = $adSearchResult[0]['samaccountname'][0];
 
    if (!$adUser) {
       $adUser = $input->get('adUser', 'all');
@@ -6117,7 +6042,6 @@ function renderAdUserExtraLocationAccessTable()
 
    if (!$adUser) {
       echo $html->error_message('Could not determine AD User.', 'Error');
-      return;
    }
 
    $query = "select * from lan_management_rbac_location where user_name = '$adUser' and deleted = 0";
@@ -6296,21 +6220,6 @@ function renderAddLocationsToAdGroupModalContent()
       }
    }
 
-   $query = "select location_codes from lan_management_rbac_location where user_name = '$adUser'";
-   $dbLanManagementRbacLocationCodes = $db->query($query);
-
-   foreach ($dbLanManagementRbacLocationCodes as $value) {
-      $userLocationCodes = json_decode($value['location_codes'] ?? [], true) ?? [];
-
-      foreach ($userLocationCodes as $userLocationCode) {
-         foreach ($snowLocations as $index => $location) {
-            if (preg_match('/' . $userLocationCode . '/i', $location)) {
-               unset($snowLocations[$index]);
-            }
-         }
-      }
-   }
-
    $formProps = [
       'id' => 'renderAdUserExtraLocationAccessTableForm',
       'method' => 'post',
@@ -6402,7 +6311,7 @@ function addLocationsToAdGroup()
    $query = "select user_name, ad_group, location_codes from lan_management_rbac_location where user_name = '$adUser'";
    $dbLanManagementRbacLocations = $db->query($query);
 
-   $dbLocationCodes = json_decode($dbLanManagementRbacLocations[$adUser]['location_codes'] ?? '[]', true) ?? [];
+   $dbLocationCodes = json_decode($dbLanManagementRbacLocations[$adUser]['location_codes'], true);
 
    foreach ($locationCodes as $locationCode) {
       if (!in_array($locationCode, $dbLocationCodes)) {
@@ -6473,17 +6382,17 @@ function getAdUserLocationCode($ldap, $adbasedn, $adUser)
  */
 function getAllSnowLocations($db, $snow)
 {
-   global $func;
-
-   $query = "select site from lan_switch WHERE service LIKE 'Managed' AND JSON_VALID(details) and  JSON_EXTRACT(details, \"$.sysinfo.location\") is not null and enabled = 1 group by site";
+   $query = "select site from lan_switch WHERE service LIKE 'Managed' AND JSON_VALID(details) and  JSON_EXTRACT(details, \"$.sysinfo.location\") is not null group by site";
    $dbSwitches = $db->query($query);
    $dbLocationCodes = [];
 
    foreach ($dbSwitches as $dbSwitch) {
-      if (!preg_match('/l\d{5}/i', $dbSwitch['site'], $match)) {
+      preg_match('/l\d{5}/i', $dbSwitch['site'], $match);
+      $locationCode = $match[0];
+
+      if (!$locationCode) {
          continue;
       }
-      $locationCode = $match[0];
 
       $dbLocationCodes[$locationCode] = $locationCode;
    }
@@ -6504,13 +6413,14 @@ function getAllSnowLocations($db, $snow)
          continue;
       }
 
-      if (!preg_match('/l\d{5}/i', $location, $match)) {
-         continue;
-      }
+      preg_match('/l\d{5}/i', $location, $match);
       $locationCode = $match[0];
 
+      if (!$locationCode) {
+         continue;
+      }
+
       if (!in_array($locationCode, $dbLocationCodes)) {
-         // echo "Skipping location $location as it does not have any active managed switches linked to it.<br>";
          continue;
       }
 
@@ -6743,7 +6653,6 @@ function sectionChangeSiteMode()
    $html = $global['html'];
    $db = $global['db'];
    $modal = $global['modal'];
-   $submit = $global['submit'];
 
    $permission = $global['permission'];
 
@@ -6961,7 +6870,7 @@ function changeToLowImpact()
 
 function low_impact_loading_banner()
 {
-   $banner = "<div class=\"ui tiny info message\">";
+   $banner .= "<div class=\"ui tiny info message\">";
    $banner .= "<div class=\"header\">";
    $banner .= "Loading Banner";
    $banner .= "</div>";
@@ -7082,8 +6991,8 @@ function sectionManageBanners()
    if (preg_match('/View Banner/i', $submit))
       viewBannerModal();
 
-   // if (preg_match('/History Banner/i', $submit))
-   //    historyBannerModal();
+   if (preg_match('/History Banner/i', $submit))
+      historyBannerModal();
 }
 
 function showTable()
@@ -7134,9 +7043,6 @@ function showCreateBannerModal()
    $func = $global['func'];
    $html = $global['html'];
 
-   $bannerCode = '';
-   $bannerDesc = '';
-
    print $html->startmodal("Create Banner", true); //true property brings a close icon next to the div box, but you can close it without the 'x' icon. It is just not as intuitive for somee poeple
    print $html->startmodalcontent();
    print $html->startform(array('method' => 'post', 'action' => parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH)));
@@ -7162,7 +7068,7 @@ function viewBannerModal()
    $html = $global['html'];
    $db = $global['db'];
 
-   $bannerID = intval($_GET['bannerID'] ?? 0);
+   $bannerID = intval($_GET['bannerID']);
 
    $statement = "SELECT * FROM lan_switch_banner WHERE id = $bannerID";
    $queryResult = $db->query($statement);
@@ -7217,7 +7123,7 @@ function editBannerModal()
    $html = $global['html'];
    $db = $global['db'];
 
-   $bannerID = intval($_GET['bannerID'] ?? 0);
+   $bannerID = intval($_GET['bannerID']);
 
    $statement = "SELECT * FROM lan_switch_banner WHERE id = $bannerID";
    $queryResult = $db->query($statement);
@@ -7233,7 +7139,6 @@ function editBannerModal()
    print "<br/><br/>";
    print $html->input_text('bannerDesc', $bannerDesc, 2048, 80, array('placeholder' => ''));
    print "<br/><br/>";
-   $options = ['placeholder' => ''];
    print $html->textarea('bannerContent', $text = $bannerContent, $cols = 82, $rows = 5, $options);
    print "<br/><br/>";
    print $html->submit('editBanner', 'Edit Banner', array('type' => 'button', 'size' => 'tiny', 'color' => 'green', 'align' => 'left floated'));
@@ -7270,7 +7175,7 @@ function sectionSyncWithCatalystCenter()
    if ($region && !preg_match('/select/i', $region)) {
       $script = "update-lan-switch -r " . strtolower($region);
       print "<br><br>";
-      $func->loadstart("Gathering data from $region Catalyst Center. Please wait...");
+      $func->loadstart("Gathering data from $region Catalist Center. Please wait...");
       exec("/opt/epic/core/gdc/run/$script", $output, $result);
       $func->loadfinish();
       print $html->success_message("Data has been synchronized.", "SUCCESS");
@@ -7295,7 +7200,7 @@ function sectionUpdateADGroup()
    $adGroup = $input->get('adGroup', 'all');
 
    //Update db logs before checking for ad trainer
-   if (!empty($_POST['update_ad_group_trainer'])) {
+   if ($_POST['update_ad_group_trainer']) {
       update_ad_group_trainer();
    }
 
@@ -7311,14 +7216,13 @@ function sectionUpdateADGroup()
 
    $adTrainer = getADTrainer() ? true : false;
 
-   if ($adGroup && !preg_match('/select/i', $adGroup)) {
+   if ($adGroup && !preg_match('/select/i', $adgroup)) {
       $filter = "(&(distinguishedname=$adGroup))";
       $groupInfo = $ldap->search($adbasedn, $filter);
 
       unset($groupInfo[0]['member']['count']);
 
       print $html->startform(array('method' => 'post', 'action' => parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH)));
-      $adObject = '';
       print $html->input_text('adObject', $adObject, 60, 60, array('placeholder' => 'Search AD Object'));
       print $html->hidden_text('tab', 'Admin');
       print $html->hidden_text('adminSection', $adminSection);
@@ -7417,8 +7321,8 @@ function sectionUpdateADGroup()
          $item['Display Name'] = $memberDetails[0]['displayname'][0];
          $item['Member DN'] = $member;
 
-         $item['Added by'] = $logs[$member]['updated_by'] ?? 'No data';
-         $item['Added'] = $logs[$member]['updated'] ?? 'No data';
+         $item['Added by'] = $logs[$member]['updated_by'] ? $logs[$member]['updated_by'] : 'No data';
+         $item['Added'] = $logs[$member]['updated'] ? $logs[$member]['updated'] : 'No data';
 
          $items[] = $item;
       }
@@ -7532,7 +7436,6 @@ function addObjectToGroup($adObject, $group)
 
       $to = implode(',', $emails);
 
-      $adTrainer = '';
       if ($is_managed_local_it_group) {
          $adTrainer = getADTrainer();
       }
@@ -7646,7 +7549,7 @@ function update_ad_group_trainer()
    $sql_res = $db->query($sql_req);
 
    if (empty($sql_res)) {
-      $trainer = htmlspecialchars($_POST['update_ad_group_trainer'] ?? '', ENT_QUOTES, 'UTF-8');
+      $trainer = htmlspecialchars($_POST['update_ad_group_trainer'], ENT_QUOTES, 'UTF-8');
 
       $log_data = [
          'action' => 'specifyUpdateADGroupTrainer',
@@ -7736,7 +7639,6 @@ function removeObjectFromGroup($adObject, $group)
 
    $func->logchange($db, json_encode($logData));
 
-   $adTrainer = '';
    if ($is_managed_local_it_group) {
       $adTrainer = getADTrainer();
    }
@@ -7789,6 +7691,8 @@ function showLog()
       '7' => '7 days',
       '14' => '14 days',
       '30' => '30 days',
+      '60' => '60 days',
+      '90' => '90 days',
    );
 
    print $html->startform(array('method' => 'post', 'action' => parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH)));
@@ -7832,10 +7736,6 @@ function collectInterfaceData($devicename)
    foreach ($oids['int'] as $oidname => $oidvalue) {
 
       $result[$oidname] = $snmp->walk($devip, $oidvalue);
-
-      if (!is_array($result[$oidname])) {
-         continue;
-      }
 
       foreach ($result[$oidname] as $key => $value) {
          $match = explode('.', $key);
@@ -7972,7 +7872,7 @@ function getSwitchFromSnow($serialNumber)
 
    $result = $snow->getSwitch($params);
 
-   $return = $result['result'][0] ?? null;
+   $return = $result['result'][0];
 
    return $return;
 }
